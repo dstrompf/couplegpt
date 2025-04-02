@@ -7,27 +7,42 @@ function Chat() {
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+
     const newMessages = [...messages, { role: 'user', content: input }];
     setMessages(newMessages);
     setInput('');
     setLoading(true);
+
+    // ✅ DEBUG: Check if the API key is available at runtime
+    console.log('Using API key:', process.env.REACT_APP_OPENAI_API_KEY);
 
     try {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
+          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
           model: 'gpt-4',
-          messages: newMessages
-        })
+          messages: newMessages,
+        }),
       });
+
       const data = await res.json();
+
+      // ✅ DEBUG: Log the full OpenAI API response
+      console.log('OpenAI response:', data);
+
+      if (!res.ok) {
+        console.error('OpenAI error:', data);
+        throw new Error(data.error?.message || 'Unknown error from OpenAI');
+      }
+
       const reply = data.choices?.[0]?.message?.content || '[No reply]';
       setMessages([...newMessages, { role: 'assistant', content: reply }]);
     } catch (err) {
+      console.error('Fetch error:', err);
       setMessages([...newMessages, { role: 'assistant', content: '[Error fetching reply]' }]);
     } finally {
       setLoading(false);
@@ -42,18 +57,4 @@ function Chat() {
             <strong>{msg.role === 'user' ? 'You' : 'CoupleGPT'}:</strong> {msg.content}
           </div>
         ))}
-        {loading && <div>CoupleGPT is thinking...</div>}
-      </div>
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-        placeholder="Ask something..."
-        style={{ width: '70%', padding: '0.5rem' }}
-      />
-      <button onClick={sendMessage} style={{ padding: '0.5rem', marginLeft: '0.5rem' }}>Send</button>
-    </div>
-  );
-}
-
-export default Chat;
+        {loading && <div
